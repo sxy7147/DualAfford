@@ -10,7 +10,7 @@
 
 DualAfford is accepted to ICLR 2023.
 
-Our team: [Yan Zhao](https://sxy7147.github.io), [Ruihai Wu](https://warshallrho.github.io), Zhehuan Chen, [Yourong Zhang](https://www.linkedin.com/in/yourong-zhang-2b1aab23a/), [Qingnan Fan](https://fqnchina.github.io), [Kaichun Mo](https://kaichun-mo.github.io) and [Hao Dong](https://zsdonghao.github.io).
+Our team: [Yan Zhao](https://sxy7147.github.io)\*, [Ruihai Wu](https://warshallrho.github.io)\*, Zhehuan Chen, [Yourong Zhang](https://www.linkedin.com/in/yourong-zhang-2b1aab23a/), [Qingnan Fan](https://fqnchina.github.io), [Kaichun Mo](https://kaichun-mo.github.io) and [Hao Dong](https://zsdonghao.github.io).
 
 (* indicates joint first authors)
 
