@@ -41,7 +41,7 @@ def render_pts(out_fn, pts, blender_fn='camera.blend', highlight_id=None):
     with open(out_fn+'.mtl', 'w') as fout:
         fout.write('newmtl f0\nKd 0 0 1\n')
         fout.write('newmtl f1\nKd 1 0 0\n')
-    cmd = 'cd %s && /home/wuruihai/blender-2.79-linux-glibc219-x86_64/blender -noaudio --background %s --python render_blender.py %s %s > /dev/null' \
+    cmd = 'cd %s && /home/blender-2.79-linux-glibc219-x86_64/blender -noaudio --background %s --python render_blender.py %s %s > /dev/null' \
             % (os.path.join(os.path.dirname(os.path.abspath(__file__))), \
             blender_fn, out_fn+'.obj', out_fn)
     # print("cmd:", cmd)
@@ -76,7 +76,7 @@ def render_pts_highlight_points(out_fn, pts, blender_fn='camera.blend', highligh
     with open(out_fn+'.mtl', 'w') as fout:
         fout.write('newmtl f0\nKd 0 0 1\n')
         fout.write('newmtl f1\nKd 1 0 0\n')
-    cmd = 'cd %s && home/wuruihai/blender-2.79-linux-glibc219-x86_64/blender -noaudio --background %s --python render_blender.py %s %s > /dev/null' \
+    cmd = 'cd %s && home/blender-2.79-linux-glibc219-x86_64/blender -noaudio --background %s --python render_blender.py %s %s > /dev/null' \
             % (os.path.join(os.path.dirname(os.path.abspath(__file__))), \
             blender_fn, out_fn+'.obj', out_fn)
     call(cmd, shell=True)

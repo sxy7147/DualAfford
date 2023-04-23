@@ -3,26 +3,26 @@ CUDA_VISIBLE_DEVICES=0 xvfb-run -a python train_collaborative_adaptation.py \
     --category_types Box,Bucket,Dishwasher,Display,Microwave,Bench,Bowl,Keyboard2  \
     --primact_type pushing \
     --aff1_version model_aff_fir   \
-    --aff1_path  ../2gripper_logs/affordance/exp-AFF1   \
+    --aff1_path  ../logs/affordance/exp-AFF1   \
     --aff1_eval_epoch 40 \
     --actor1_version model_actor_fir   \
-    --actor1_path  ../2gripper_logs/actor/exp-ACTOR1  \
+    --actor1_path  ../logs/actor/exp-ACTOR1  \
     --actor1_eval_epoch 80 \
     --critic1_version model_critic_fir   \
-    --critic1_path  ../2gripper_logs/critic/exp-CRITIC1  \
+    --critic1_path  ../logs/critic/exp-CRITIC1  \
     --critic1_eval_epoch 40 \
     --aff2_version model_aff_sec   \
-    --aff2_path  ../2gripper_logs/affordance/exp-AFF2  \
+    --aff2_path  ../logs/affordance/exp-AFF2  \
     --aff2_eval_epoch 40 \
     --actor2_version model_actor_sec   \
-    --actor2_path  ../2gripper_logs/actor/exp-ACTOR2  \
+    --actor2_path  ../logs/actor/exp-ACTOR2  \
     --actor2_eval_epoch 80 \
     --critic2_version model_critic_sec   \
-    --critic2_path  ../2gripper_logs/critic/exp-CRITIC2  \
+    --critic2_path  ../2logs/critic/exp-CRITIC2  \
     --critic2_eval_epoch 20 \
     --out_folder collaborative_adaptation \
-    --offline_data_dir ../data/2gripper_data/PUSH_TRAIN_DATA  \
-    --val_data_dir ../data/2gripper_data/PUSH_TEST_DATA \
+    --offline_data_dir ../data/PUSH_TRAIN_DATA  \
+    --val_data_dir ../data/PUSH_TEST_DATA \
     --train_buffer_max_num 12000  \
     --val_buffer_max_num 500  \
     --feat_dim 128   \

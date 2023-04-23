@@ -7,10 +7,10 @@ CUDA_VISIBLE_DEVICES=3 xvfb-run -a python eval_sampleSucc_main.py \
     --aff2_version model_aff_sec   \
     --actor2_version model_actor_sec   \
     --critic2_version model_critic_sec   \
-    --CA_path  ../2gripper_logs/finetune/exp-FINETUNE  \
+    --CA_path  ../logs/finetune/exp-FINETUNE  \
     --CA_eval_epoch 8-0 \
     --out_folder sampleSucc_CA_results \
-    --val_data_dir ../data/2gripper_data/PUSH_TEST_DATA \
+    --val_data_dir ../data/PUSH_TEST_DATA \
     --val_buffer_max_num 500  \
     --coordinate_system cambase \
     --target_part_state closed  \

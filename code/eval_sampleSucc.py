@@ -42,7 +42,7 @@ parser.add_argument('--forward_world2', type=str)
 parser.add_argument('--task_threshold', type=int, default=15)
 parser.add_argument('--euler_threshold', type=int, default=5)
 parser.add_argument('--check_contactError', action='store_true', default=False)
-parser.add_argument('--out_dir', type=str, default='/media/wuruihai/sixt/2gripper_logs/visu/BEGIN')
+parser.add_argument('--out_dir', type=str, default='./out_dir')
 parser.add_argument('--save_results', action='store_true', default=False)
 parser.add_argument('--no_gui', action='store_true', default=False, help='no_gui [default: False]')
 
@@ -138,26 +138,26 @@ print("camera created")
 
 if primact_type in ['pushing', 'rotating', 'topple']:
     if category not in ShapeNet_categories:
-        object_urdf_fn = '../../Sapien_dataset/dataset/%s/mobility.urdf' % str(shape_id)
+        object_urdf_fn = '../data/dataset/%s/mobility.urdf' % str(shape_id)
     else:
-        object_urdf_fn = '../../Sapien_dataset/dataset2/%s/mobility_vhacd.urdf' % str(shape_id)
+        object_urdf_fn = '../data/dataset2/%s/mobility_vhacd.urdf' % str(shape_id)
     object_material = env.get_material(args.static_friction, args.dynamic_friction, 0.01)
 
 elif primact_type in ['pickup']:
     if args.urdf_type == "removed":
-        object_urdf_fn = "../../Sapien_dataset/dataset/%s/mobility_vhacd_rm.urdf" % str(shape_id)
+        object_urdf_fn = "../data/dataset/%s/mobility_vhacd_rm.urdf" % str(shape_id)
         print(">>> Removed parts! Shape_id: ", shape_id)
     elif args.urdf_type == "fixbase":
-        object_urdf_fn = "../../Sapien_dataset/dataset/%s/mobility_vhacd_fixbase.urdf" % str(shape_id)
+        object_urdf_fn = "../data/dataset/%s/mobility_vhacd_fixbase.urdf" % str(shape_id)
         print(">>> Fixbase! Shape_id: ", shape_id)
     elif args.urdf_type == "processed":
-        object_urdf_fn = "../../Sapien_dataset/dataset/%s/mobility_vhacd.urdf" % str(shape_id)
+        object_urdf_fn = "../data/dataset/%s/mobility_vhacd.urdf" % str(shape_id)
         print(">>> Processed! Shape_id: ", shape_id)
     elif args.urdf_type == "shapenet":
-        object_urdf_fn = "../../Sapien_dataset/dataset2/%s/mobility_vhacd.urdf" % str(shape_id)
+        object_urdf_fn = "../data/dataset2/%s/mobility_vhacd.urdf" % str(shape_id)
         print(">>> ShapeNet! Shape_id: ", shape_id)
     else:
-        object_urdf_fn = '../../Sapien_dataset/dataset/%s/mobility.urdf' % str(shape_id)
+        object_urdf_fn = '../data/dataset/%s/mobility.urdf' % str(shape_id)
         print(">>> Origin! Shape_id: ", shape_id)
     object_material = env.get_material(args.static_friction, args.dynamic_friction, 0.01)
 

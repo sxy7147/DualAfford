@@ -295,7 +295,7 @@ if __name__ == '__main__':
     # main parameters (optional)
     parser.add_argument('--device', type=str, default='cuda:0', help='cpu or cuda:x for using cuda on GPU number x')
     parser.add_argument('--seed', type=int, default=-1, help='random seed (for reproducibility) [specify -1 means to generate a random one]')
-    parser.add_argument('--log_dir', type=str, default='../2gripper_logs/affordance', help='exp logs directory')
+    parser.add_argument('--log_dir', type=str, default='../logs/affordance', help='exp logs directory')
     parser.add_argument('--overwrite', action='store_true', default=False, help='overwrite if exp_dir exists [default: False]')
     parser.add_argument('--resume', action='store_true', default=False, help='resume if exp_dir exists [default: False]')
     parser.add_argument('--continue_to_play', action='store_true', default=False)

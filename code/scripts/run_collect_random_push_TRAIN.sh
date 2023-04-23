@@ -1,7 +1,7 @@
 xvfb-run -a python collect_data_main.py \
     --category Box,Dishwasher,Display,Microwave,Printer,Bench,Keyboard2 \
     --primact_type pushing  \
-    --out_dir ../data/2gripper_data/AllTrainCat_push_TRAIN \
+    --out_dir ../data/AllTrainCat_push_TRAIN \
     --mode train  \
     --target_part_state closed  \
     --start_dist 0.45   \

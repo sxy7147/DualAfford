@@ -85,9 +85,9 @@ ShapeNet_categories = ['Bench', 'Sofa', 'Bowl', 'Basket', 'Keyboard2', 'Jar', 'C
 
 
 if category not in ShapeNet_categories:
-    object_urdf_fn = '../../Sapien_dataset/dataset/%s/mobility.urdf' % str(shape_id)
+    object_urdf_fn = '../data/dataset/%s/mobility.urdf' % str(shape_id)
 else:
-    object_urdf_fn = '../../Sapien_dataset/dataset2/%s/mobility_vhacd.urdf' % str(shape_id)
+    object_urdf_fn = '../data/dataset2/%s/mobility_vhacd.urdf' % str(shape_id)
 object_material = env.get_material(4, 4, 0.01)
 try:
     if category in smaller_categories:

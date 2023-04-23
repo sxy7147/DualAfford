@@ -3,8 +3,8 @@ CUDA_VISIBLE_DEVICES=1 python train_actor.py \
     --category_types Box,Dishwasher,Display,Microwave,Printer,Bench,Keyboard2  \
     --model_version model_actor_sec \
     --primact_type pushing \
-    --offline_data_dir ../data/2gripper_data/PUSH_TRAIN_DATA  \
-    --val_data_dir ../data/2gripper_data/PUSH_TEST_DATA \
+    --offline_data_dir ../data/PUSH_TRAIN_DATA  \
+    --val_data_dir ../data/PUSH_TEST_DATA \
     --train_buffer_max_num 24000  \
     --val_buffer_max_num 1000  \
     --feat_dim 128   \

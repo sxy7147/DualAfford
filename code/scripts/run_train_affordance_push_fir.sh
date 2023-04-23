@@ -4,13 +4,13 @@ CUDA_VISIBLE_DEVICES=0 python train_affordance.py \
     --primact_type pushing \
     --model_version model_aff_fir \
     --actor_version model_actor_fir   \
-    --actor_path  ../2gripper_logs/actor/exp-ACTOR2_MODEL  \
+    --actor_path  ../logs/actor/exp-ACTOR2_MODEL  \
     --actor_eval_epoch 80 \
     --critic_version model_critic_fir   \
-    --critic_path  ../2gripper_logs/critic/exp-CRITIC2_MODEL   \
+    --critic_path  ../logs/critic/exp-CRITIC2_MODEL   \
     --critic_eval_epoch 40 \
-    --offline_data_dir ../data/2gripper_data/PUSH_TRAIN_DATA  \
-    --val_data_dir ../data/2gripper_data/PUSH_TEST_DATA \
+    --offline_data_dir ../data/PUSH_TRAIN_DATA  \
+    --val_data_dir ../data/PUSH_TEST_DATA \
     --train_buffer_max_num 24000  \
     --val_buffer_max_num 1000  \
     --feat_dim 128   \
