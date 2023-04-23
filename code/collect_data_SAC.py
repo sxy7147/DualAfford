@@ -664,9 +664,12 @@ def get_cate_setting_args(args):
     if args.show_gui:
         args.num_workers = 1
     args.device = args.device if torch.cuda.is_available() else "cpu"
+    
+    return args
 
 
 if __name__ == '__main__':
+    print("OK!!!!")
     args = parser.parse_args()
     args = get_cate_setting_args(args)
 

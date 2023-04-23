@@ -16,7 +16,7 @@ xvfb-run -a python collect_data_SAC.py \
     --fix_joint \
     --pam_exp_name finalexp-model_all_final-pulling-None-train_all_v1 \
     --pam_model_epoch 81 \
-    --pam_model_version model_3d_legacy \
+    --pam_model_version model_3d_legacy
 
 # This is RL training script. Feel free to modify:
 #   category: to other existing categories in the dataset
