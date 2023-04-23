@@ -2,7 +2,7 @@
 
 
 
-[![Overview](https://github.com/sxy7147/DualAfford/blob/main/images/teaser.pdf)](https://github.com/daerduoCarey/where2act/blob/main/images/teaser.png)
+![Overview](./images/teaser.pdf)
 
 **The Proposed DualAfford Task.** Given different shapes and manipulation tasks (*e.g.*, pushing the keyboard in the direction indicated by the red arrow), our proposed *DualAfford* framework predicts dual collaborative visual actionable affordance and gripper orientations. The prediction for the second gripper (b) is dependent on the first (a). We can directly apply our network to real-world data.
 
@@ -10,7 +10,9 @@
 
 DualAfford is accepted to ICLR 2023.
 
-Our team: [Yan Zhao](https://sxy7147.github.io)*, [Ruihai Wu](https://warshallrho.github.io)*, Zhehuan Chen, [Yourong Zhang](https://www.linkedin.com/in/yourong-zhang-2b1aab23a/), [Qingnan Fan](https://fqnchina.github.io), [Kaichun Mo](https://kaichun-mo.github.io) and [Hao Dong](https://zsdonghao.github.io). (* indicates joint first authors)
+Our team: [Yan Zhao](https://sxy7147.github.io), [Ruihai Wu](https://warshallrho.github.io), Zhehuan Chen, [Yourong Zhang](https://www.linkedin.com/in/yourong-zhang-2b1aab23a/), [Qingnan Fan](https://fqnchina.github.io), [Kaichun Mo](https://kaichun-mo.github.io) and [Hao Dong](https://zsdonghao.github.io).
+
+(* indicates joint first authors)
 
 Arxiv Version: https://arxiv.org/pdf/2207.01971.pdf
 
