@@ -10,7 +10,7 @@
 
 DualAfford is accepted to ICLR 2023.
 
-Our team: [Yan Zhao](https://sxy7147.github.io)\*, [Ruihai Wu](https://warshallrho.github.io)\*, Zhehuan Chen, [Yourong Zhang](https://www.linkedin.com/in/yourong-zhang-2b1aab23a/), [Qingnan Fan](https://fqnchina.github.io), [Kaichun Mo](https://kaichun-mo.github.io) and [Hao Dong](https://zsdonghao.github.io).
+Our team: [Yan Zhao](https://sxy7147.github.io)\*, [Ruihai Wu](https://warshallrho.github.io)\*, [Zhehuan Chen](https://acmlczh.github.io), [Yourong Zhang](https://www.linkedin.com/in/yourong-zhang-2b1aab23a/), [Qingnan Fan](https://fqnchina.github.io), [Kaichun Mo](https://kaichun-mo.github.io) and [Hao Dong](https://zsdonghao.github.io).
 
 (* indicates joint first authors)
 
@@ -54,13 +54,22 @@ For visualization, please install blender v2.79 and put the executable in your e
 Also, the prediction result can be visualized using MeshLab or the *RenderShape* tool in [Thea](https://github.com/sidch/thea).
 
 ## Generate Offline Training Data
-Before training the network, we need to collect a large set of interaction trials via random exploration.
+Before training the network, we need to collect a large set of interaction trials via random or RL exploration.
 
 To generate offline training data for the `pushing` task, run the following command:
 
     sh scripts/run_collect_random_push_TRAIN.sh
 
-Note that the scripts for other tasks are similar. You can modify the content of the script file to generate data for different settings. Also, please modify the `num_processes` parameter to specify the number of CPU cores to use.
+Note that the scripts for other tasks (`rotate`, `topple`) are similar. You can modify the content of the script file to generate data for different settings. Also, please modify the `num_processes` parameter to specify the number of CPU cores to use.
+
+To generate offline training data for the `pickup` task, you need to train an RL model for each category of object. Run the following command for example:
+
+    sh scripts/run_collect_SAC_pickup_TRAIN_display.sh
+    sh scripts/run_collect_SACVAL_pickup_TRAIN_display.sh
+
+You can refer to `gen_cate_setting.py` to see the default settings of categories, modify the file and run this command to generate the json file for loading arguments:
+    
+    python gen_cate_setting.py
 
 ## Training Pipeline for the DualAfford Framework
 
