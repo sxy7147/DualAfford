@@ -1,7 +1,7 @@
 xvfb-run -a python collect_data_SAC.py \
     --category Display \
     --primact_type pickup \
-    --date "0311" \
+    --date "default" \
     --out_dir ../data/2gripper_data/collect_data_RL_partialPC \
     --batch_size 512  \
     --num_workers 12 \

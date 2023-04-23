@@ -36,7 +36,7 @@ cate_setting = {
         "final_dist": 0.10,
         "move_steps": 4000,
         "wait_steps": 2000,
-        "RL_load_date": "0311",
+        "RL_load_date": "default",
         "finetune_path": "../2gripper_logs/finetune/exp-finetune-CVPR_baseline-pickup-Eyeglasses,Bucket,TrashCan,Pliers,Basket,Display-050980",
         "finetune_eval_epoch": "2-300"
     },
@@ -67,7 +67,7 @@ cate_setting = {
         "final_dist": 0.10,
         "move_steps": 4000,
         "wait_steps": 1500,
-        "RL_load_date": "0420"
+        "RL_load_date": "default"
     },
     "pushing": {
         "cate_setting": {
@@ -95,7 +95,7 @@ cate_setting = {
         "final_dist": 0.10,
         "move_steps": 3500,
         "wait_steps": 2000,
-        "RL_load_date": "1105",
+        "RL_load_date": "default",
         "finetune_path": "../2gripper_logs/finetune/exp-finetune-CVPR_baseline-pushing-Box,Bucket,Dishwasher,Display,Microwave,Bench,Bowl,Keyboard2-042881",
         "finetune_eval_epoch": "8-0"
     },

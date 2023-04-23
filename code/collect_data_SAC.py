@@ -76,6 +76,7 @@ parser.add_argument('--RL_continue', action='store_true', default=False)
 parser.add_argument("--RL_mode", type=str, default="train")
 parser.add_argument("--RL_load_suf", type=str, default="")
 parser.add_argument("--RL_exp_name", type=str, default="")
+parser.add_argument("--RL_ckpt", type=str, default=None)
 parser.add_argument('--shape_id', type=int, default=0)
 parser.add_argument('--max_episodes', type=int, default=1000000)
 parser.add_argument('--replay_buffer_size', type=int, default=16384)
@@ -735,17 +736,13 @@ if __name__ == '__main__':
         ShareParameters(sac_trainer.policy_optimizer)
         ShareParameters(sac_trainer.alpha_optimizer)
 
-        if args.RL_mode == "test":
-            print("Loading test model...")
-            args.RL_load_folder = f"SAC_{args.category}_{args.primact_type}_{args.RL_load_date}_" + \
-                                  f"id{args.cate_id}{'' if args.RL_load_suf == '' else '_'}{args.RL_load_suf}"
-            sac_trainer.load_model(os.path.join(args.out_dir, args.RL_load_folder, args.RL_exp_name))
-            print("Model loaded!")
-        elif args.RL_continue:
+        if args.RL_mode == "test" or args.RL_continue:
             print("Loading checkpoint...")
-            args.RL_load_folder = f"SAC_{args.category}_{args.primact_type}_{args.RL_load_date}_" + \
+            if args.RL_ckpt is None:
+                args.RL_load_folder = f"SAC_{args.category}_{args.primact_type}_{args.RL_load_date}_" + \
                                   f"id{args.cate_id}{'' if args.RL_load_suf == '' else '_'}{args.RL_load_suf}"
-            sac_trainer.load_model(os.path.join(args.out_dir, args.RL_load_folder, args.RL_exp_name))
+                args.RL_ckpt = os.path.join(args.out_dir, args.RL_load_folder, args.RL_exp_name)
+            sac_trainer.load_model(args.RL_ckpt)
             print("Model loaded!")
     else:
         replay_buffer = None
