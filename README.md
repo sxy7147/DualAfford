@@ -2,7 +2,7 @@
 
 
 
-![Overview](./images/teaser.pdf)
+![Overview](./images/teaser.png)
 
 **The Proposed DualAfford Task.** Given different shapes and manipulation tasks (*e.g.*, pushing the keyboard in the direction indicated by the red arrow), our proposed *DualAfford* framework predicts dual collaborative visual actionable affordance and gripper orientations. The prediction for the second gripper (b) is dependent on the first (a). We can directly apply our network to real-world data.
 
