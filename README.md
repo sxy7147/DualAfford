@@ -24,7 +24,7 @@ Project Page: https://hyperplane-lab.github.io/DualAfford/
 To train the models, please first go to the `data` folder and download the pre-processed SAPIEN dataset for DualAfford. 
 To test over the pretrained models, please go to the `logs` folder and download the pretrained checkpoints.
 
-I will release the dataset and the pretrained models before April 28th.
+You can click [here](https://mirrors.pku.edu.cn/dl-release/DualAfford_ICLR2023/) to download all resources.
 
 ## Dependencies
 This code has been tested on Ubuntu 18.04 with Cuda 10.1, Python 3.6, and PyTorch 1.7.0.
