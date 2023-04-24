@@ -14,7 +14,16 @@ from subprocess import call
 from sapien.core import Pose
 import json
 import torch.nn.functional as F
+from sapien.core import Pose, ArticulationJointType
 from camera import Camera
+
+
+class ContactError(Exception):
+    pass
+
+
+class DivisionError(Exception):
+    pass
 
 
 def printout(flog, strout):
@@ -221,6 +230,51 @@ def rotationMatrixToEulerAngles(R):
     return np.array([x * 180 / np.pi, y * 180 / np.pi, z * 180 / np.pi])
 
 
+def get_contact_point(cam, cam_XYZA, x, y):
+    position_cam = cam_XYZA[x, y, :3]
+    position_cam_xyz1 = np.ones((4), dtype=np.float32)
+    position_cam_xyz1[:3] = position_cam
+    position_world_xyz1 = cam.get_metadata()['mat44'] @ position_cam_xyz1
+    position_world = position_world_xyz1[:3]
+    return position_world, position_cam, position_world_xyz1
+
+
+def get_rotmat_full(cam, position_world, up, forward, number, out_info, start_dist=0.20, final_dist=0.08, act_type=0, term=""):
+    # run bgs before runing get_rotmat
+    left = np.cross(up, forward)
+    left /= np.linalg.norm(left)
+    forward = np.cross(left, up)
+    forward /= np.linalg.norm(forward)
+    forward_cam = np.linalg.inv(cam.get_metadata()['mat44'][:3, :3]) @ forward
+    up_cam = np.linalg.inv(cam.get_metadata()['mat44'][:3, :3]) @ up
+    out_info['position_world' + term + number] = position_world.tolist()  # world
+    out_info['gripper_direction_world' + term + number] = up.tolist()
+    out_info['gripper_direction_camera' + term + number] = up_cam.tolist()
+    out_info['gripper_forward_direction_world' + term + number] = forward.tolist()
+    out_info['gripper_forward_direction_camera' + term + number] = forward_cam.tolist()
+    rotmat = np.eye(4).astype(np.float32)  # rotmat: world coordinate
+    rotmat[:3, 0] = forward
+    rotmat[:3, 1] = left
+    rotmat[:3, 2] = up
+
+    pos2_rotmat = np.array(rotmat, dtype=np.float32)
+    pos2_rotmat[:3, 3] = position_world - up * final_dist
+    pos2_pose = Pose().from_transformation_matrix(pos2_rotmat)
+    out_info['target_rotmat_world' + term + number] = pos2_rotmat.tolist()
+
+    pos1_rotmat = np.array(rotmat, dtype=np.float32)
+    pos1_rotmat[:3, 3] = position_world - up * start_dist
+    pos1_pose = Pose().from_transformation_matrix(pos1_rotmat)
+    out_info['start_rotmat_world' + term + number] = pos1_rotmat.tolist()
+
+    pos3_rotmat = np.array(rotmat, dtype=np.float32)
+    pos3_rotmat[:3, 3] = position_world - up * start_dist
+    if act_type == 1:
+        pos3_rotmat[2, 3] = pos2_rotmat[2, 3]
+
+    return pos1_pose, pos1_rotmat, pos2_pose, pos2_rotmat, pos3_rotmat
+
+
 def get_rotmat(cam, position_world, up, forward, number, out_info, start_dist=0.20, final_dist=0.08):
     up /= np.linalg.norm(up)
     left = np.cross(up, forward)
@@ -371,11 +425,14 @@ def dual_gripper_wait_n_steps(robot1, robot2, n, vis_gif=False, vis_gif_interval
         robot2.robot.set_qf(passive_force2)
         robot2.env.step()
         robot2.env.render()
-        if vis_gif and ((i + 1) % vis_gif_interval == 0):
+        if vis_gif and ((i + 1) % vis_gif_interval == 0 or i == 0):
             rgb_pose, _ = cam.get_observation()
             fimg = (rgb_pose * 255).astype(np.uint8)
             fimg = Image.fromarray(fimg)
             imgs.append(fimg)
+            if i == 0:
+                for _ in range(4):
+                    imgs.append(fimg)
     robot1.robot.set_qf([0] * robot1.robot.dof)
     robot2.robot.set_qf([0] * robot2.robot.dof)
 
@@ -400,6 +457,40 @@ def append_data_list(file_dir, only_true_data=False, append_root_dir=False, prim
             data_list.append(file_dir)
         print('data_list: ', data_list)
     return data_list
+
+
+def save_data_full(saved_dir, epoch, out_info, cam_XYZA_list, gt_target_link_mask=None,
+              whole_pc=None, repeat_id=None, category=None, shape_id=None, cam_XYZA_list2=None):
+    symbol = str(epoch)
+    if repeat_id is not None:
+        symbol = symbol + "_" + str(repeat_id)
+    if category is not None:
+        symbol = symbol + "_" + str(category)
+    if shape_id is not None:
+        symbol = symbol + "_" + str(shape_id)
+
+    with open(os.path.join(saved_dir, 'result_%s.json' % symbol), 'w') as fout:
+        json.dump(out_info, fout)
+
+    cam_XYZA_id1, cam_XYZA_id2, cam_XYZA_pts, cam_XYZA = cam_XYZA_list
+    save_h5(os.path.join(saved_dir, 'cam_XYZA_%s.h5' % symbol),
+            [(cam_XYZA_id1.astype(np.uint64), 'id1', 'uint64'),
+             (cam_XYZA_id2.astype(np.uint64), 'id2', 'uint64'),
+             (cam_XYZA_pts.astype(np.float32), 'pc', 'float32')])
+
+    if cam_XYZA_list2 is not None:
+        cam_XYZA_id1, cam_XYZA_id2, cam_XYZA_pts, cam_XYZA = cam_XYZA_list2
+        save_h5(os.path.join(saved_dir, 'cam_XYZA2_%s.h5' % symbol),
+                [(cam_XYZA_id1.astype(np.uint64), 'id1', 'uint64'),
+                 (cam_XYZA_id2.astype(np.uint64), 'id2', 'uint64'),
+                 (cam_XYZA_pts.astype(np.float32), 'pc', 'float32')])
+
+    if whole_pc is not None:
+        np.savez(os.path.join(saved_dir, 'collision_visual_shape_%s' % symbol), pts=whole_pc)
+
+    if gt_target_link_mask is not None:
+        Image.fromarray((gt_target_link_mask > 0).astype(np.uint8) * 255).save(
+            os.path.join(saved_dir, 'interaction_mask_%s.png' % symbol))
 
 
 def save_data(saved_dir, epoch, out_info, cam_XYZA_list, gt_target_link_mask, whole_pc=None, repeat_id=None, init_cam_XYZA_list=None, final_cam_XYZA_list=None):
@@ -465,6 +556,394 @@ def get_6d_rot_loss(pred_6d, gt_6d):
     gt_Rs = bgs(gt_6d.reshape(-1, 2, 3).permute(0, 2, 1))
     theta = bgdR(gt_Rs, pred_Rs)
     return theta
+
+def simulate_single(env, cam, primact_type, robot, wait_steps, move_steps, pos1_pose, pos2_rotmat, pos3_rotmat):
+    result = "VALID"
+    gif_imgs = []
+
+    robot.robot.set_root_pose(pos1_pose)
+    env.render()
+
+    rgb_pose, _ = cam.get_observation()
+    fimg = (rgb_pose * 255).astype(np.uint8)
+    fimg = Image.fromarray(fimg)
+
+    try:
+        # stage 1
+        try:
+            imgs = robot.move_to_target_pose(pos2_rotmat, num_steps=move_steps, vis_gif=True, cam=cam)
+            gif_imgs.extend(imgs)
+            imgs = robot.wait_n_steps(n=wait_steps, vis_gif=True, cam=cam)
+            gif_imgs.extend(imgs)
+        except ContactError:
+            print(f"{robot.robot_name} Single Contact Error when stage1!")
+            raise ContactError()
+
+        if 'pushing' in primact_type or 'rotating' in primact_type:
+            raise Exception
+
+        # stage 1.5
+        try:
+            robot.close_gripper()
+            robot.wait_n_steps(n=wait_steps, cam=cam)
+        except ContactError:
+            print(f"{robot.robot_name} Single Contact error when stage1.5!")
+            raise ContactError()
+
+        # stage 2: move to start pose
+        try:
+            imgs = robot.move_to_target_pose(pos3_rotmat, num_steps=move_steps, vis_gif=True, cam=cam)
+            gif_imgs.extend(imgs)
+            imgs = robot.wait_n_steps(n=wait_steps, vis_gif=True, cam=cam)
+            gif_imgs.extend(imgs)
+        except ContactError:
+            print(f"{robot.robot_name} Single Contact error when stage2!")
+            raise ContactError()
+
+    except ContactError:
+        result = "INVALID"
+
+    except:
+        pass
+
+    return result, fimg, gif_imgs
+
+
+def simulate(env, cam, primact_type, robot1, robot2, wait_steps, move_steps,
+             pos1_pose1, pos2_rotmat1, pos3_rotmat1, pos1_pose2, pos2_rotmat2, pos3_rotmat2,
+             use_waiting=False):
+    sim_gif_imgs = []
+    grasp1, grasp2, next_grasp1, next_grasp2 = False, False, False, False
+
+    robot1.robot.set_root_pose(pos1_pose1)
+    robot2.robot.set_root_pose(pos1_pose2)
+    env.render()
+
+    # save img
+    rgb_pose, _ = cam.get_observation()
+    fimg = Image.fromarray((rgb_pose * 255).astype(np.uint8))
+
+    # activate contact checking
+    try:
+        env.dual_start_checking_contact(
+            robot1.hand_actor_id, robot1.gripper_actor_ids, robot2.hand_actor_id, robot2.gripper_actor_ids, True
+        )
+        env.step()
+        env.render()
+    except ContactError:
+        print('Contact error when creating grippers!')
+        return "INVALID", fimg, sim_gif_imgs, grasp1, grasp2, next_grasp1, next_grasp2
+    finally:
+        env.dual_end_checking_contact(
+            robot1.hand_actor_id, robot1.gripper_actor_ids, robot2.hand_actor_id, robot2.gripper_actor_ids, False
+        )
+
+    # stage 1: move to final pose
+    try:
+        imgs = dual_gripper_move_to_target_pose(
+            robot1, robot2, pos2_rotmat1, pos2_rotmat2,
+            num_steps=move_steps, cam=cam, vis_gif=True
+        )
+        sim_gif_imgs.extend(imgs)
+        imgs = dual_gripper_wait_n_steps(robot1, robot2, n=wait_steps, cam=cam, vis_gif=True)
+        sim_gif_imgs.extend(imgs)
+    except ContactError:
+        print("Contact error when stage 1!")
+        return "INVALID", fimg, sim_gif_imgs, grasp1, grasp2, next_grasp1, next_grasp2
+
+    if 'pushing' in primact_type or 'rotating' in primact_type or "topple" in primact_type:
+        return "VALID", fimg, sim_gif_imgs, grasp1, grasp2, next_grasp1, next_grasp2
+
+    # pulling, pickup
+    # stage 1.5: gripper closing
+    try:
+        robot1.close_gripper()
+        robot2.close_gripper()
+        dual_gripper_wait_n_steps(robot1, robot2, n=wait_steps, cam=cam)
+    except ContactError:
+        print("Contact error when stage 1.5!")
+        return "INVALID", fimg, sim_gif_imgs, grasp1, grasp2, next_grasp1, next_grasp2
+
+    # test if grasp successfully
+    now_qpos1 = robot1.robot.get_qpos().tolist()
+    now_qpos2 = robot2.robot.get_qpos().tolist()
+    grasp1 = True if now_qpos1[-1] + now_qpos1[-2] > 0.01 else False
+    grasp2 = True if now_qpos2[-1] + now_qpos2[-2] > 0.01 else False
+
+    # stage 2: move to start pose
+    try:
+        imgs = dual_gripper_move_to_target_pose(
+            robot1, robot2, pos3_rotmat1, pos3_rotmat2,
+            num_steps=move_steps, cam=cam, vis_gif=True
+        )
+        sim_gif_imgs.extend(imgs)
+        imgs = dual_gripper_wait_n_steps(robot1, robot2, n=wait_steps, cam=cam, vis_gif=True)
+        sim_gif_imgs.extend(imgs)
+    except ContactError:
+        print("Contact error when stage 2!")
+        return "INVALID", fimg, sim_gif_imgs, grasp1, grasp2, next_grasp1, next_grasp2
+
+    # test if grasp successfully
+    now_qpos1 = robot1.robot.get_qpos().tolist()
+    now_qpos2 = robot2.robot.get_qpos().tolist()
+    next_grasp1 = True if now_qpos1[-1] + now_qpos1[-2] > 0.01 else False
+    next_grasp2 = True if now_qpos2[-1] + now_qpos2[-2] > 0.01 else False
+
+    if 'pickup' in primact_type:
+        return "VALID", fimg, sim_gif_imgs, grasp1, grasp2, next_grasp1, next_grasp2
+
+    # try:
+    #     robot1.open_gripper()
+    #     robot2.open_gripper()
+    #     imgs = dual_gripper_wait_n_steps(robot1, robot2, n=wait_steps, cam=cam, vis_gif=True)
+    #     sim_gif_imgs.extend(imgs)
+    # except ContactError:
+    #     print("Contact error when stage 2.5!")
+    #     return "INVALID", fimg, sim_gif_imgs, grasp1, grasp2, next_grasp1, next_grasp2
+
+    return "VALID", fimg, sim_gif_imgs, grasp1, grasp2, next_grasp1, next_grasp2
+
+
+def cal_reward(primact_type, success, alpha, beta, gamma, traj_len, grip_dir1, grip_dir2, trajectory,
+               grasp1, grasp2, next_grasp1, next_grasp2):
+    # calculate reward
+    reward = 0
+    if 'pushing' in primact_type:
+        if success:
+            reward += 1
+        else:
+            if np.abs(alpha) < 5 and np.abs(beta) < 5 and np.abs(gamma) < 5 and 0.01 <= traj_len < 0.05:
+                reward = traj_len * 10 * 2
+            elif (np.abs(alpha) > 5 or np.abs(beta) > 5 or np.abs(gamma) > 5) and traj_len >= 0.01:
+                reward = 0.1
+            else:
+                reward = 0.05  # valid
+
+    elif 'rotating' in primact_type:
+        if success:
+            reward += 1
+        # ......
+
+    elif 'pickup' in primact_type or 'pulling' in primact_type:
+        # whether grasp successfully or not
+        if (grasp1 and not grasp2) or (not grasp1 and grasp2):
+            reward += 0.2
+        elif grasp1 and grasp2:
+            reward += 0.5
+        # whether pick up successfully or not
+        if success:
+            reward += 1
+        else:
+            if np.abs(alpha) < 5 and np.abs(beta) < 5 and np.abs(gamma) < 5 and 0.01 <= traj_len < 0.05:
+                reward += traj_len * 10 * 2
+            elif (np.abs(alpha) > 5 or np.abs(beta) > 5 or np.abs(gamma) > 5) and traj_len >= 0.02:
+                reward += 0.2
+            else:
+                reward += 0.05
+        # not single arm
+        if next_grasp1 and next_grasp2:
+            reward += 0.5
+        # cos1 = np.dot(-grip_dir1, trajectory) / np.linalg.norm(grip_dir1) / np.linalg.norm(trajectory)
+        # cos2 = np.dot(-grip_dir2, trajectory) / np.linalg.norm(grip_dir2) / np.linalg.norm(trajectory)
+        # print("cos1:", cos1, ",cos2:", cos2)
+        # reward += 0.3 * (cos1 + cos2)
+        if 'pulling' in primact_type:
+            cos3 = np.linalg.norm(trajectory[:2]) / np.linalg.norm(trajectory)
+            print("cos3:", cos3)
+            reward += 0.5 * cos3
+
+    return reward
+
+
+def check_single_success(env, cam, robot, out_info, primact_type, obj_file, obj_material, obj_category,
+                         obj_root_pos, obj_qpos, obj_scale, obj_density, pos1_pose, pos2_rotmat, pos3_rotmat,
+                         wait_steps, move_steps, use_collision=False):
+    if not type(obj_qpos) == list:
+        obj_qpos = obj_qpos.tolist()
+    joint_angles = env.load_object(
+        obj_file, obj_material, given_pose=obj_root_pos, given_joint_angles=obj_qpos,
+        scale=obj_scale, density=obj_density, use_collision=use_collision
+    )
+    env.render()
+    object_all_link_ids = env.all_link_ids
+    gt_all_link_mask = cam.get_id_link_mask(object_all_link_ids)  # (448, 448), 0(unmovable) - id(all)
+    x, y = out_info['pixel_locs'][0], out_info['pixel_locs'][1]
+    target_part_id = object_all_link_ids[gt_all_link_mask[x, y] - 1]
+    env.set_target_object_part_actor_id2(target_part_id)  # for get_target_part_pose
+    target_link_mat44 = np.array(out_info['target_link_mat44'])
+    prev_origin_world = np.array(out_info['prev_origin_world'])
+    out_info[f'{robot.robot_name}_joint_angles'] = joint_angles
+
+    robot.load_gripper()
+    robot.robot.set_root_pose(pos1_pose)
+    env.render()
+
+    result = "VALID"
+    gif_imgs = []
+    rgb_pose, _ = cam.get_observation()
+    fimg = (rgb_pose * 255).astype(np.uint8)
+    fimg = Image.fromarray(fimg)
+
+    try:
+        # stage 1
+        try:
+            env.step()
+            env.render()
+
+            imgs = robot.move_to_target_pose(pos2_rotmat, num_steps=move_steps, vis_gif=True, cam=cam)
+            gif_imgs.extend(imgs)
+            imgs = robot.wait_n_steps(n=wait_steps, vis_gif=True, cam=cam)
+            gif_imgs.extend(imgs)
+        except ContactError:
+            print(f"{robot.robot_name} Single Contact Error when stage 1!")
+            raise ContactError()
+
+        if 'pushing' in primact_type or 'rotating' in primact_type:
+            raise Exception
+
+        # stage 1.5
+        try:
+            robot.close_gripper()
+            robot.wait_n_steps(n=wait_steps, cam=cam)
+        except ContactError:
+            print(f"{robot.robot_name} Single Contact error when stage 1.5!")
+            raise ContactError()
+
+        # stage 2: move to start pose
+        try:
+            imgs = robot.move_to_target_pose(pos3_rotmat, num_steps=move_steps, vis_gif=True, cam=cam)
+            gif_imgs.extend(imgs)
+            imgs = robot.wait_n_steps(n=wait_steps, vis_gif=True, cam=cam)
+            gif_imgs.extend(imgs)
+        except ContactError:
+            print(f"{robot.robot_name} Single Contact error when stage 2!")
+            raise ContactError()
+
+        if 'pickup' in primact_type:
+            raise Exception
+
+        # stage 2.5
+        # try:
+        #     robot.open_gripper()
+        #     imgs = robot.wait_n_steps(n=wait_steps, cam=cam, vis_gif=True)
+        #     gif_imgs.extend(imgs)
+        # except ContactError:
+        #     print(f"{robot.robot_name} Single Contact error when stage 2.5!")
+        #     raise ContactError()
+
+    except ContactError:
+        result = "INVALID"
+
+    except:
+        pass
+
+    next_target_pose = env.get_target_part_pose() if result == "VALID" else None
+    env.remove_all_objects()
+    env.scene.remove_articulation(robot.robot)
+
+    if result == "VALID":
+        target_part_trans = next_target_pose.to_transformation_matrix()  # world -> target part, transformation matrix 4*4 SE3
+        transition = np.linalg.inv(target_part_trans) @ target_link_mat44
+        alpha, beta, gamma = rotationMatrixToEulerAngles(transition)
+
+        # calculate displacement
+        next_origin_world_xyz1 = target_part_trans @ np.array([0, 0, 0, 1])
+        next_origin_world = next_origin_world_xyz1[:3]
+        trajectory = next_origin_world - prev_origin_world
+        task_success, div_error, traj_len, traj_dir = check_task_success(
+            trajectory, alpha, beta, gamma, primact_type, out_info=out_info, task_name=f"{robot.robot_name}_"
+        )
+        out_info[f'{robot.robot_name}_success'] = 'True' if task_success else 'False'
+        out_info[f'{robot.robot_name}_target_part_trans'] = target_part_trans.tolist()
+        out_info[f'{robot.robot_name}_transition'] = transition.tolist()
+        out_info[f'{robot.robot_name}_alpha'] = alpha.tolist()
+        out_info[f'{robot.robot_name}_beta'] = beta.tolist()
+        out_info[f'{robot.robot_name}_gamma'] = gamma.tolist()
+    else:
+        task_success = False
+
+    return task_success, gif_imgs, fimg
+
+
+def check_task_success(trajectory, alpha, beta, gamma, primact_type, grip_dir1=None, grip_dir2=None,
+                       out_info=None, lieDown=False, task_name="", succ_threshold=3):
+    div_error, success = False, False
+
+    if 'pushing' in primact_type or "pulling" in primact_type:
+        # the projection on x-y plane
+        traj_dir = copy.deepcopy(trajectory)
+        z = trajectory[-1]
+        traj_dir[-1] = 0.0
+        traj_len = np.linalg.norm(traj_dir)
+        try:
+            if traj_len <= 1e-6:
+                raise DivisionError()
+            traj_dir = traj_dir / traj_len
+            if max(np.abs(alpha), np.abs(beta), np.abs(gamma)) < succ_threshold and traj_len >= 0.05:
+                if "pushing" in primact_type:
+                    success = True
+                else:
+                    if np.abs(z) / traj_len <= (1 / math.sqrt(3)) \
+                            and (grip_dir1 is None or np.dot(-grip_dir1, trajectory) >= 0) \
+                            and (grip_dir2 is None or np.dot(-grip_dir2, trajectory) >= 0):
+                        success = True
+        except DivisionError:
+            div_error = True
+            traj_dir = np.array([0, 0, 0])
+        out_info[task_name + 'traj_dir'] = traj_dir.tolist()
+        # print(task_name + 'traj_len: ', traj_len, '\ttraj_dir: ', traj_dir)
+
+    elif 'rotating' in primact_type:  # alpha > 10, beta/gamma < 5, movement < 0.02
+        traj_len = np.linalg.norm(trajectory)
+        traj_dir = None
+        if lieDown:
+            if np.abs(alpha) > 10 and np.abs(beta) < 5 and np.abs(gamma) < 5:  # rorate and can translation ######
+                success = True
+        else:
+            if np.abs(alpha) < 5 and np.abs(beta) > 10 and np.abs(gamma) < 5:  # rorate and can translation ######
+                success = True
+        out_info[task_name + 'rotation_angle'] = beta.tolist()
+        # print(task_name + 'traj_len: ', traj_len, '\trotation_angle: ', beta)
+
+    elif 'topple' in primact_type:  # alpha + gamma > 10, beta < 5
+        traj_projection = trajectory
+        traj_projection[-1] = 0.0
+        traj_len = np.linalg.norm(traj_projection)
+        if traj_len > 1e-6:
+            traj_dir = traj_projection / np.linalg.norm(traj_projection)
+        else:
+            traj_dir = np.array([0, 0, 0])
+            div_error = True
+
+        if np.abs(alpha) + np.abs(gamma) > 10 and np.abs(beta) < 5:  # rorate and can translation ######
+            success = True
+        out_info[task_name + 'rotation_angle'] = beta.tolist()
+        # print(task_name + 'traj_len: ', traj_len, '\ttraj_dir: ', traj_dir)
+
+    elif 'pickup' in primact_type:
+        # the projection on z-axis
+        traj_len = trajectory[2]
+        try:
+            if traj_len <= 1e-6:
+                raise DivisionError()
+            traj_dir = trajectory / np.linalg.norm(trajectory)
+            if max(np.abs(alpha), np.abs(beta), np.abs(gamma)) < 5 and traj_len >= 0.05:
+                success = True
+        except DivisionError:
+            div_error = True
+            traj_dir = np.uint8(0)
+            traj_len = np.uint8(0)
+        out_info[task_name + 'traj_dir'] = traj_dir.tolist()
+        # print("\t" + task_name + 'traj_len: ', traj_len, '\t' + task_name + ' traj_dir: ', traj_dir)
+        # print("\talpha:", alpha, "beta", beta, "gamma", gamma)
+
+    else:
+        traj_len, traj_dir = None, None
+
+    out_info[task_name + 'trajectory'] = trajectory.tolist()
+    out_info[task_name + 'traj_len'] = traj_len.tolist()
+
+    return success, div_error, traj_len, traj_dir
 
 
 def check_success(trajectory, alpha, beta, gamma, primact_type, out_info=None, lieDown=False, threshold=3, grip_dir1=None, grip_dir2=None):
@@ -590,6 +1069,46 @@ def wait_for_object_still(env, cam=None, visu=False):
     else:
         return still_timesteps
 
+
+def get_shape_list_full(all_categories, primact, mode='train'):
+    tag_dict = {"train": dict(), "val": dict(), "test": dict()}
+    if "/" in all_categories:
+        cat_list = all_categories.split('/')
+    else:
+        cat_list = all_categories.split(',')
+    shape_cat_dict = dict()
+    if primact == "all":
+        primacts = ["pushing", "rotating", "pickup"]
+    else:
+        primacts = [primact]
+    for tag in tag_dict:
+        for pm in primacts:
+            tag_dict[tag]["dir"] = f"../stats/train_where2actPP_{tag}_data_list_{pm}.txt"
+            tag_dict[tag]["shape_list"] = list()
+            tag_dict[tag]["cat_shape_id_dict"] = dict()
+            for cat in cat_list:
+                tag_dict[tag]["cat_shape_id_dict"][cat] = list()
+
+            with open(tag_dict[tag]["dir"], 'r') as fin:
+                for line in fin.readlines():
+                    shape_id, cat = line.rstrip().split()
+                    if cat not in cat_list:
+                        continue
+                    tag_dict[tag]["shape_list"].append(shape_id)
+                    tag_dict[tag]["cat_shape_id_dict"][cat].append(shape_id)
+                    shape_cat_dict[shape_id] = cat
+
+    if mode == 'all':
+        all_shape_list = tag_dict["train"]["shape_list"] + tag_dict["val"]["shape_list"] + tag_dict["test"]["shape_list"]
+        all_cat_shape_id_list = dict()
+        for cat in cat_list:
+            all_cat_shape_id_list[cat] = tag_dict["train"]["cat_shape_id_dict"][cat] + \
+                                         tag_dict["val"]["cat_shape_id_dict"][cat] + \
+                                         tag_dict["test"]["cat_shape_id_dict"][cat]
+        return cat_list, all_shape_list, shape_cat_dict, all_cat_shape_id_list
+    else:
+        return cat_list, tag_dict[mode]["shape_list"], shape_cat_dict, tag_dict[mode]["cat_shape_id_dict"]
+    
 
 def get_shape_list(all_categories, mode='train', primact_type='push'):
     train_file_dir = "../stats/train_where2actPP_train_data_list.txt"
@@ -752,3 +1271,32 @@ def get_data_info(cur_data, cur_type='type0', exchange_ctpts=False, given_task=N
                 contact_point_world2, gripper_up_world2, gripper_forward_world2)
 
 
+def select_target_part(env, cam):
+    object_all_link_ids = env.all_link_ids
+    gt_all_link_mask = cam.get_id_link_mask(object_all_link_ids)  # (448, 448), 0(unmovable) - id(all)
+    xs, ys = np.where(gt_all_link_mask > 0)
+    print("NUM SELECT", len(xs))
+    
+    # to find a link with fixed joint
+    target_joint_type = ArticulationJointType.FIX
+    tot_trial = 0
+    while True:
+        idx = np.random.randint(len(xs))
+        x, y = xs[idx], ys[idx]
+        target_part_id = object_all_link_ids[gt_all_link_mask[x, y] - 1]
+        print("id:", target_part_id)
+        env.set_target_object_part_actor_id2(target_part_id)
+        tot_trial += 1
+        if (tot_trial >= 50) or (env.target_object_part_joint_type == target_joint_type):
+            break
+    if env.target_object_part_joint_type != target_joint_type:
+        return None, None, None, None, None, None
+    gt_target_link_mask = cam.get_id_link_mask([target_part_id])
+    print(env.target_object_part_actor_link)
+    target_pose = env.get_target_part_pose()
+    target_link_mat44 = target_pose.to_transformation_matrix()
+    prev_origin_world_xyz1 = target_link_mat44 @ np.array([0, 0, 0, 1])
+    prev_origin_world = prev_origin_world_xyz1[:3]
+
+    env.render()
+    return gt_target_link_mask, prev_origin_world, target_pose, target_link_mat44, x, y
