@@ -16,9 +16,9 @@ parser.add_argument('--primact_type', type=str)
 parser.add_argument('--out_dir', type=str)
 parser.add_argument('--mode', type=str, default='train/val/all')
 
-parser.add_argument('--density', type=float, default=2.0)
-parser.add_argument('--damping', type=int, default=10)
-parser.add_argument('--target_part_state', type=str, default='random-middle')
+parser.add_argument('--density', type=float, default=1.0)
+parser.add_argument('--damping', type=int, default=1.0)
+parser.add_argument('--target_part_state', type=str, default='closed')
 parser.add_argument('--start_dist', type=float, default=0.30)
 parser.add_argument('--final_dist', type=float, default=0.10)
 parser.add_argument('--move_steps', type=int, default=2000)
@@ -37,24 +37,6 @@ def setup_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-def copy_file(trail_id, category, shape_id, succ, out_dir):
-    tmp_file_dir = os.path.join(out_dir, 'tmp_succ_files')
-    tmp_gif_dir = os.path.join(out_dir, 'tmp_succ_gif')
-    if succ:
-        target_file_dir = os.path.join(out_dir, 'succ_files')
-        target_gif_dir = os.path.join(out_dir, 'succ_gif')
-    else:
-        target_file_dir = os.path.join(out_dir, 'fail_files')
-        target_gif_dir = os.path.join(out_dir, 'fail_gif')
-
-    cmd = 'cp %s %s/' % (os.path.join(tmp_file_dir, 'result_%d.json' % trail_id), target_file_dir)
-    call(cmd, shell=True)
-    cmd = 'cp %s %s/' % (os.path.join(tmp_file_dir, 'cam_XYZA_%d.h5' % trail_id), target_file_dir)
-    call(cmd, shell=True)
-    cmd = 'cp %s %s/' % (os.path.join(tmp_file_dir, 'interaction_mask_%d.png' % trail_id), target_file_dir)
-    call(cmd, shell=True)
-    cmd = 'cp %s %s/' % (os.path.join(tmp_gif_dir, '%d_%s_%s.gif' % (trail_id, category, shape_id)), target_gif_dir)
-    call(cmd, shell=True)
 
 
 
@@ -70,8 +52,14 @@ def run_jobs(idx_process, args, transition_Q):
         cur_random_seed = np.random.randint(10000000)
 
         # load object
-        selected_cat = cat_list[random.randint(0, len(cat_list) - 1)]
-        shape_id = cat2shape_dict[selected_cat][random.randint(0, len(cat2shape_dict[selected_cat]) - 1)]
+        
+        # selected_cat = cat_list[random.randint(0, len(cat_list) - 1)]
+        # shape_id = cat2shape_dict[selected_cat][random.randint(0, len(cat2shape_dict[selected_cat]) - 1)]
+        
+        ''' For now, we're using just this object, we will incorporate more later '''
+        selected_cat = 'USB'
+        shape_id = '100061'
+        
         print('shape_id: ', shape_id, selected_cat, cur_trial)
 
         cmd = 'python collect_data.py --trial_id %d --shape_id %s --category %s --primact_type %s --random_seed %d ' \
@@ -82,41 +70,16 @@ def run_jobs(idx_process, args, transition_Q):
                  args.move_steps, args.wait_steps, args.out_dir)
         if trial % args.save_interval == 0:
             cmd += '--save_data '
-        cmd += '> /dev/null 2>&1'
+        # cmd += '> /dev/null 2>&1'
 
         ret = call(cmd, shell=True)
         if ret == 1:
             transition_Q.put(['fail', trial])
         elif ret == 2:
             transition_Q.put(['invalid', trial])
+        elif ret == 0:
+            transition_Q.put(['succ', trial])
 
-
-        if ret == 0:
-            # check dual
-            ret0, ret1 = 1, 1
-            if not args.not_check_dual:
-                cmd = 'python collect_data_checkDual.py --trial_id %d --random_seed %d --gripper_id %d ' \
-                      '--density %f --damping %d --target_part_state %s --start_dist %f --final_dist %f ' \
-                      '--move_steps %d --wait_steps %d --out_dir %s --no_gui ' \
-                      % (cur_trial, cur_random_seed, 0,
-                         args.density, args.damping, args.target_part_state, args.start_dist, args.final_dist,
-                         args.move_steps, args.wait_steps, args.out_dir)
-                ret0 = call(cmd, shell=True)
-
-                cmd = 'python collect_data_checkDual.py --trial_id %d --random_seed %d --gripper_id %d ' \
-                      '--density %f --damping %d --target_part_state %s --start_dist %f --final_dist %f ' \
-                      '--move_steps %d --wait_steps %d --out_dir %s --no_gui ' \
-                      % (cur_trial, cur_random_seed, 1,
-                         args.density, args.damping, args.target_part_state, args.start_dist, args.final_dist,
-                         args.move_steps, args.wait_steps, args.out_dir)
-                ret1 = call(cmd, shell=True)
-
-            if ret0 == 0 or ret1 == 0:
-                transition_Q.put(['fail', trial])     # single succ
-                copy_file(cur_trial, selected_cat, shape_id, succ=False, out_dir=args.out_dir)
-            else:
-                transition_Q.put(['succ', trial])     # dual succ
-                copy_file(cur_trial, selected_cat, shape_id, succ=True, out_dir=args.out_dir)
 
 
 
@@ -134,12 +97,10 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(out_dir, 'succ_gif'))
         os.makedirs(os.path.join(out_dir, 'fail_gif'))
         os.makedirs(os.path.join(out_dir, 'invalid_gif'))
-        os.makedirs(os.path.join(out_dir, 'tmp_succ_gif'))
 
         os.makedirs(os.path.join(out_dir, 'succ_files'))
         os.makedirs(os.path.join(out_dir, 'fail_files'))
         os.makedirs(os.path.join(out_dir, 'invalid_files'))
-        os.makedirs(os.path.join(out_dir, 'tmp_succ_files'))
 
 
     trans_q = mp.Queue()

@@ -149,6 +149,16 @@ class Camera(object):
         return new_nor
 
     def get_movable_link_mask(self, link_ids):
+        # link_seg = self.camera.get_segmentation()
+        # link_mask = np.zeros((link_seg.shape[0], link_seg.shape[1])).astype(np.uint8)
+        # for idx, lid in enumerate(link_ids):
+        #     cur_link_pixels = int(np.sum(link_seg == lid))
+        #     if cur_link_pixels > 0:
+        #         link_mask[link_seg == lid] = idx + 1
+        # return link_mask
+        return self.get_link_mask(self, link_ids)
+    
+    def get_link_mask(self, link_ids):
         link_seg = self.camera.get_segmentation()
         link_mask = np.zeros((link_seg.shape[0], link_seg.shape[1])).astype(np.uint8)
         for idx, lid in enumerate(link_ids):
