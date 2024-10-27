@@ -117,10 +117,6 @@ class Env(object):
         for j in self.object.get_joints():
             if j.get_dof() == 1:
                 self.movable_link_ids.append(j.get_child_link().get_id())
-        self.fixed_link_ids = list(set(self.all_link_ids) - set(self.movable_link_ids))
-        # print('all_link_ids: ', self.all_link_ids)
-        # print('movable_link_ids: ', self.movable_link_ids)
-        # print('fix_link_ids: ', self.fixed_link_ids)
         if self.flog is not None:
             self.flog.write('All Actor Link IDs: %s\n' % str(self.all_link_ids))
             self.flog.write('All Movable Actor Link IDs: %s\n' % str(self.movable_link_ids))
@@ -141,7 +137,7 @@ class Env(object):
                 l = process_angle_limit(j.get_limits()[0, 0])
                 self.joint_angles_lower.append(float(l))
                 r = process_angle_limit(j.get_limits()[0, 1])
-                print("l, r:", l, r)
+                # print("l, r:", l, r)
                 self.joint_angles_upper.append(float(r))
                 if state == 'closed':
                     joint_angles.append(float(l))
@@ -322,23 +318,6 @@ class Env(object):
         if contact and valid:
             self.check_contact = False
         return True
-
-    def check_contact_exist(self, id1, id2,vis=False):
-        contacts = self.scene.get_contacts()
-        
-        if(vis):
-            contact_pair=[]
-            for contact in contacts:
-                aid1 = contact.actor1.get_id()
-                aid2 = contact.actor2.get_id()
-                contact_pair.append([aid1,aid2])
-            print('contact_pair:',contact_pair)
-        for contact in contacts:
-            aid1 = contact.actor1.get_id()
-            aid2 = contact.actor2.get_id()
-            if (aid1 == id1 and aid2 == id2) or (aid1 == id2 and aid2 == id1):
-                return True 
-        return False
 
 
     def close_render(self):

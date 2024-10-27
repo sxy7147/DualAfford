@@ -26,7 +26,6 @@ class Robot(object):
         self.robot = loader.load(urdf, {"material": material})
         #self.robot = loader.load(urdf, material)
         self.robot.name = "robot"
-        self.robot_scale = scale
 
         # hand (EE), two grippers, the rest arm joints (if any)
         self.end_effector_index, self.end_effector = \
@@ -52,7 +51,7 @@ class Robot(object):
             for j in self.robot.get_joints():
                 if j.get_dof() == 1:
                     if j.get_name().startswith("panda_finger_joint"):
-                        joint_angles.append(0.04 * self.robot_scale)
+                        joint_angles.append(0.06)
                     else:
                         joint_angles.append(0)
             self.robot.set_qpos(joint_angles)
@@ -91,7 +90,7 @@ class Robot(object):
             for j in self.robot.get_joints():
                 if j.get_dof() == 1:
                     if j.get_name().startswith("panda_finger_joint"):
-                        joint_angles.append(0.04 * self.robot_scale)
+                        joint_angles.append(0.06)
                     else:
                         joint_angles.append(0)
             self.robot.set_qpos(joint_angles)
@@ -160,7 +159,7 @@ class Robot(object):
         current_ee_pose = self.end_effector.get_pose().to_transformation_matrix()
         return adjoint_matrix(current_ee_pose) @ body_twist
 
-    def move_to_target_pose(self, target_ee_pose: np.ndarray, num_steps: int, vis_gif=False, vis_gif_interval=200, cam=None) -> None:
+    def move_to_target_pose(self, target_ee_pose: np.ndarray, num_steps: int, visu=None, vis_gif=False, vis_gif_interval=200, cam=None) -> None:
         """
         Move the robot hand dynamically to a given target pose
         Args:
@@ -169,10 +168,13 @@ class Robot(object):
                         each step correspond to self.scene.get_timestep() seconds
                         in physical simulation
         """
+        if visu:
+            waypoints = []
         if vis_gif:
             imgs = []
 
         executed_time = num_steps * self.timestep
+
         spatial_twist = self.calculate_twist(executed_time, target_ee_pose)
         for i in range(num_steps):
             if i % 100 == 0:
@@ -182,6 +184,8 @@ class Robot(object):
             self.internal_controller(qvel)
             self.env.step()
             self.env.render()
+            if visu and i % 200 == 0:
+                waypoints.append(self.robot.get_qpos().tolist())
             if vis_gif and ((i + 1) % vis_gif_interval == 0):
                 rgb_pose, _ = cam.get_observation()
                 fimg = (rgb_pose*255).astype(np.uint8)
@@ -193,14 +197,13 @@ class Robot(object):
                 fimg = Image.fromarray(fimg)
                 for idx in range(5):
                     imgs.append(fimg)
-            
-            # check collision between gripper and table
-            contact1 = self.env.check_contact_exist(self.gripper_actor_ids, 0)
-            if contact1:
-                return imgs
 
-        if vis_gif:
+        if visu and not vis_gif:
+            return waypoints
+        if vis_gif and not visu:
             return imgs
+        if visu and vis_gif:
+            return imgs, waypoints
 
     def move_to_target_qvel(self, qvel) -> None:
 
@@ -232,13 +235,15 @@ class Robot(object):
 
     def open_gripper(self):
         for joint in self.gripper_joints:
-            joint.set_drive_target(0.04 * self.robot_scale)
+            joint.set_drive_target(0.06)
 
     def clear_velocity_command(self):
         for joint in self.arm_joints:
             joint.set_drive_velocity_target(0)
 
-    def wait_n_steps(self, n: int, vis_gif=False, vis_gif_interval=200, cam=None):
+    def wait_n_steps(self, n: int, visu=None, vis_gif=False, vis_gif_interval=200, cam=None):
+        if visu:
+            waypoints = []
         if vis_gif:
             imgs = []
         self.clear_velocity_command()
@@ -247,6 +252,8 @@ class Robot(object):
             self.robot.set_qf(passive_force)
             self.env.step()
             self.env.render()
+            if visu and i % 200 == 0:
+                waypoints.append(self.robot.get_qpos().tolist())
             if vis_gif and ((i + 1) % vis_gif_interval == 0):
                 rgb_pose, _ = cam.get_observation()
                 fimg = (rgb_pose*255).astype(np.uint8)
@@ -254,6 +261,8 @@ class Robot(object):
                 imgs.append(fimg)
         self.robot.set_qf([0] * self.robot.dof)
 
+        if visu:
+            return waypoints
         if vis_gif:
             return imgs
 

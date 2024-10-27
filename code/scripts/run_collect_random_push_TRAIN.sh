@@ -1,13 +1,15 @@
 xvfb-run -a python collect_data_main.py \
-    --category USB \
-    --out_dir ../data/test_USB_102001 \
+    --category Box,Dishwasher,Display,Microwave,Printer,Bench,Keyboard2 \
+    --primact_type pushing  \
+    --out_dir ../data/AllTrainCat_push_TRAIN \
     --mode train  \
     --target_part_state closed  \
-    --start_dist 0.50   \
-    --final_dist 0.20   \
+    --start_dist 0.45   \
+    --final_dist 0.10   \
     --move_steps 3500   \
     --wait_steps 2000   \
-    --num_processes 5  \
+    --num_processes 20  \
     --start_epoch 0    \
-    --save_interval 1  \
+    --save_interval 10  \
+    --checkType euler \
     --no_gui \
