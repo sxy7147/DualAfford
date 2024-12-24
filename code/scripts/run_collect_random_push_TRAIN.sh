@@ -11,5 +11,4 @@ xvfb-run -a python collect_data_main.py \
     --num_processes 20  \
     --start_epoch 0    \
     --save_interval 10  \
-    --checkType euler \
     --no_gui \

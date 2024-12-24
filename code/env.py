@@ -275,7 +275,9 @@ class Env(object):
         self.current_step += 1
         self.scene.step()
         if self.check_contact:
-            if not self.check_contact_is_valid():
+            # if not self.check_contact_is_valid():
+            #     raise ContactError()
+            if not self.dual_check_contact_is_valid():
                 raise ContactError()
 
 
@@ -319,6 +321,73 @@ class Env(object):
             self.check_contact = False
         return True
 
+    def dual_check_contact_is_valid(self):
+        self.contacts = self.scene.get_contacts()
+        contact = False
+        valid = False
+        for c in self.contacts:
+            aid1 = c.actor1.get_id()
+            aid2 = c.actor2.get_id()
+            has_impulse = False
+            for p in c.points:
+                if abs(p.impulse @ p.impulse) > 1e-4:
+                    has_impulse = True
+                    break
+            if has_impulse:
+                if (aid1 in self.robot1_gripper_actor_ids and aid2 == self.target_object_part_actor_id) or \
+                        (aid2 in self.robot1_gripper_actor_ids and aid1 == self.target_object_part_actor_id):
+                    contact, valid = True, True
+                if (aid1 in self.robot2_gripper_actor_ids and aid2 == self.target_object_part_actor_id) or \
+                        (aid2 in self.robot2_gripper_actor_ids and aid1 == self.target_object_part_actor_id):
+                    contact, valid = True, True
+
+                if (aid1 in self.robot1_gripper_actor_ids and aid2 in self.non_target_object_part_actor_id) or \
+                        (aid2 in self.robot1_gripper_actor_ids and aid1 in self.non_target_object_part_actor_id):
+                    if self.check_contact_strict:
+                        # print("## Gripper1-Object collision", c.actor1.name, c.actor2.name, aid1, aid2)
+                        self.contact_error = True
+                        return False
+                    else:
+                        contact, valid = True, True
+                if (aid1 in self.robot2_gripper_actor_ids and aid2 in self.non_target_object_part_actor_id) or \
+                        (aid2 in self.robot2_gripper_actor_ids and aid1 in self.non_target_object_part_actor_id):
+                    if self.check_contact_strict:
+                        self.contact_error = True
+                        return False
+                    else:
+                        contact, valid = True, True
+
+                if aid1 == self.robot1_hand_actor_id or aid2 == self.robot1_hand_actor_id:
+                    if self.check_contact_strict:
+                        # print("## Hand1 collision", c.actor1.name, c.actor2.name, aid1, aid2)
+                        self.contact_error = True
+                        return False
+                    else:
+                        contact, valid = True, True
+                if aid1 == self.robot2_hand_actor_id or aid2 == self.robot2_hand_actor_id:
+                    if self.check_contact_strict:
+                        # print("## Hand2 collision", c.actor1.name, c.actor2.name, aid1, aid2)
+                        self.contact_error = True
+                        return False
+                    else:
+                        contact, valid = True, True
+
+                # starting pose should have no collision at all
+                if (aid1 in self.robot1_gripper_actor_ids or aid1 == self.robot1_hand_actor_id or
+                    aid2 in self.robot1_gripper_actor_ids or aid2 == self.robot1_hand_actor_id) and self.first_timestep_check_contact:
+                    # print("## Start Hand1 collision", c.actor1.name, c.actor2.name, aid1, aid2)
+                    self.contact_error = True
+                    return False
+                if (aid1 in self.robot2_gripper_actor_ids or aid1 == self.robot2_hand_actor_id or
+                    aid2 in self.robot2_gripper_actor_ids or aid2 == self.robot2_hand_actor_id) and self.first_timestep_check_contact:
+                    # print("## Start Hand2 collision", c.actor1.name, c.actor2.name, aid1, aid2)
+                    self.contact_error = True
+                    return False
+
+        self.first_timestep_check_contact = False
+        if contact and valid:
+            self.check_contact = False
+        return True
 
     def close_render(self):
         if self.window:

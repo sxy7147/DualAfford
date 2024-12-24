@@ -96,8 +96,8 @@ try:
         joint_angles = env.load_object(object_urdf_fn, object_material, state=args.target_part_state, target_part_id=-1, scale=0.75, density=args.density, damping=args.damping)
     else:
         joint_angles = env.load_object(object_urdf_fn, object_material, state=args.target_part_state, target_part_id=-1, scale=1.0, density=args.density, damping=args.damping)
-except Exception:
-    print('error while load object')
+except Exception as e:
+    print(e)
     env.close()
     exit(3)
 
@@ -226,8 +226,9 @@ try:
 
         env.step()
 
-    except Exception:
+    except Exception as e:
         print('contact error')
+        print(e)
         out_info['result'] = 'INVALID'
         save_invalid_data(out_info, cam_XYZA_list, gt_target_link_mask, fimg)
         env.scene.remove_articulation(env.object)
@@ -249,8 +250,9 @@ try:
     gif_imgs.extend(imgs)
 
 
-except Exception:
+except Exception as e:
     print("Contact Error!")
+    print(e)
     out_info['result'] = 'INVALID'
     save_invalid_data(out_info, cam_XYZA_list, gt_target_link_mask, fimg)
     env.scene.remove_articulation(env.object)
